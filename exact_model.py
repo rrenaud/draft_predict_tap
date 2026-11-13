@@ -64,10 +64,12 @@ def solve(max_wait: int, seconds: float, workers: int):
     print(f"max wait {max_wait}: {len(patterns)} allowed patterns, status {solver.StatusName(status)}, "
           f"best {solver.ObjectiveValue() if status in (cp_model.OPTIMAL, cp_model.FEASIBLE) else None}, "
           f"lower bound {solver.BestObjectiveBound():.0f}, {solver.WallTime():.0f}s")
-    if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        for i, s in enumerate(items):
-            if solver.Value(x[i]):
-                print(''.join('X' if r in s else '.' for r in range(R)))
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        return None
+    chosen = [s for i, s in enumerate(items) if solver.Value(x[i])]
+    for s in chosen:
+        print(''.join('X' if r in s else '.' for r in range(R)))
+    return [[1 if r in s else 0 for r in range(R)] for s in chosen]
 
 
 if __name__ == '__main__':

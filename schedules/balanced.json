@@ -1,0 +1,597 @@
+{
+  "name": "balanced",
+  "title": "Balanced (recommended default)",
+  "description": "What main.py produces by default. Waits capped at 2 rounds, late-round value kept within 2.55-3.30 for everyone, and co-occurrence a hair off the proven optimum (1154 vs 1150).",
+  "critique": "Gives up the provable co-occurrence optimum: one pair taps together 4 times and one more pair only once. That is barely noticeable at the event, and it buys a clearly fairer split of the late rounds. Late balance and the gambling spread are good, not proven optimal.",
+  "settings": {
+    "MAX_WAIT": 2,
+    "LATE_WEIGHT": 2,
+    "LATE_TOLERANCE_BELOW": 0.45,
+    "LATE_TOLERANCE_ABOVE": 0.3
+  },
+  "seed": 0,
+  "metrics": {
+    "tap_together": {
+      "sum_of_squares": 1154,
+      "proven_lower_bound": 1150,
+      "min": 1,
+      "max": 4,
+      "pairs_by_count": {
+        "1": 21,
+        "2": 79,
+        "3": 89,
+        "4": 1
+      }
+    },
+    "gamble_together": {
+      "sum_of_squares": 490,
+      "pairs_by_count": {
+        "0": 10,
+        "1": 85,
+        "2": 90,
+        "3": 5
+      }
+    },
+    "waits": {
+      "max": 2,
+      "gaps_by_length": {
+        "0": 34,
+        "1": 22,
+        "2": 24
+      }
+    },
+    "late_value": {
+      "round_values": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.55,
+        0.65,
+        0.8,
+        1.0
+      ],
+      "mean": 3.0,
+      "min": 2.55,
+      "max": 3.3,
+      "imbalance": 356
+    }
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "drafters": [
+        "Brian",
+        "Alec"
+      ],
+      "gamblers": [
+        "Ryan P",
+        "Woody",
+        "Mario",
+        "TayTay",
+        "Sam B",
+        "TJ",
+        "Dan",
+        "Joyce"
+      ],
+      "tappers": [
+        "Rob",
+        "Nick M",
+        "Wyatt",
+        "Tyler",
+        "John Ryan",
+        "Jimmy J Leong",
+        "Marian",
+        "Daph",
+        "Keith",
+        "Coppola"
+      ]
+    },
+    {
+      "round": 2,
+      "drafters": [
+        "Jimmy J Leong",
+        "Coppola"
+      ],
+      "gamblers": [
+        "Rob",
+        "Nick M",
+        "Brian",
+        "Wyatt",
+        "Mario",
+        "TJ",
+        "Dan",
+        "Daph"
+      ],
+      "tappers": [
+        "Ryan P",
+        "Woody",
+        "Tyler",
+        "John Ryan",
+        "TayTay",
+        "Sam B",
+        "Marian",
+        "Alec",
+        "Keith",
+        "Joyce"
+      ]
+    },
+    {
+      "round": 3,
+      "drafters": [
+        "Rob",
+        "Wyatt"
+      ],
+      "gamblers": [
+        "Ryan P",
+        "Mario",
+        "Tyler",
+        "TayTay",
+        "Marian",
+        "Alec",
+        "Daph",
+        "Keith"
+      ],
+      "tappers": [
+        "Nick M",
+        "Brian",
+        "Woody",
+        "John Ryan",
+        "Jimmy J Leong",
+        "Sam B",
+        "TJ",
+        "Dan",
+        "Joyce",
+        "Coppola"
+      ]
+    },
+    {
+      "round": 4,
+      "drafters": [
+        "Mario",
+        "TayTay"
+      ],
+      "gamblers": [
+        "Nick M",
+        "Woody",
+        "Tyler",
+        "John Ryan",
+        "Jimmy J Leong",
+        "Sam B",
+        "Dan",
+        "Marian"
+      ],
+      "tappers": [
+        "Rob",
+        "Brian",
+        "Ryan P",
+        "Wyatt",
+        "TJ",
+        "Alec",
+        "Daph",
+        "Keith",
+        "Joyce",
+        "Coppola"
+      ]
+    },
+    {
+      "round": 5,
+      "drafters": [
+        "John Ryan",
+        "Joyce"
+      ],
+      "gamblers": [
+        "Rob",
+        "Ryan P",
+        "Woody",
+        "Jimmy J Leong",
+        "TJ",
+        "Daph",
+        "Keith",
+        "Coppola"
+      ],
+      "tappers": [
+        "Nick M",
+        "Brian",
+        "Wyatt",
+        "Mario",
+        "Tyler",
+        "TayTay",
+        "Sam B",
+        "Dan",
+        "Marian",
+        "Alec"
+      ]
+    },
+    {
+      "round": 6,
+      "drafters": [
+        "Ryan P",
+        "Marian"
+      ],
+      "gamblers": [
+        "Rob",
+        "Nick M",
+        "Brian",
+        "Tyler",
+        "Sam B",
+        "Alec",
+        "Joyce",
+        "Coppola"
+      ],
+      "tappers": [
+        "Woody",
+        "Wyatt",
+        "Mario",
+        "John Ryan",
+        "Jimmy J Leong",
+        "TayTay",
+        "TJ",
+        "Dan",
+        "Daph",
+        "Keith"
+      ]
+    },
+    {
+      "round": 7,
+      "drafters": [
+        "Tyler",
+        "Daph"
+      ],
+      "gamblers": [
+        "Nick M",
+        "Brian",
+        "Woody",
+        "John Ryan",
+        "TayTay",
+        "TJ",
+        "Alec",
+        "Keith"
+      ],
+      "tappers": [
+        "Rob",
+        "Ryan P",
+        "Wyatt",
+        "Mario",
+        "Jimmy J Leong",
+        "Sam B",
+        "Dan",
+        "Marian",
+        "Joyce",
+        "Coppola"
+      ]
+    },
+    {
+      "round": 8,
+      "drafters": [
+        "TJ",
+        "Dan"
+      ],
+      "gamblers": [
+        "Wyatt",
+        "John Ryan",
+        "TayTay",
+        "Sam B",
+        "Marian",
+        "Daph",
+        "Joyce",
+        "Coppola"
+      ],
+      "tappers": [
+        "Rob",
+        "Nick M",
+        "Brian",
+        "Ryan P",
+        "Woody",
+        "Mario",
+        "Tyler",
+        "Jimmy J Leong",
+        "Alec",
+        "Keith"
+      ]
+    },
+    {
+      "round": 9,
+      "drafters": [
+        "Nick M",
+        "Woody"
+      ],
+      "gamblers": [
+        "Rob",
+        "Wyatt",
+        "Jimmy J Leong",
+        "Dan",
+        "Marian",
+        "Alec",
+        "Keith",
+        "Joyce"
+      ],
+      "tappers": [
+        "Brian",
+        "Ryan P",
+        "Mario",
+        "Tyler",
+        "John Ryan",
+        "TayTay",
+        "Sam B",
+        "TJ",
+        "Daph",
+        "Coppola"
+      ]
+    },
+    {
+      "round": 10,
+      "drafters": [
+        "Sam B",
+        "Keith"
+      ],
+      "gamblers": [
+        "Brian",
+        "Ryan P",
+        "Wyatt",
+        "Mario",
+        "Tyler",
+        "John Ryan",
+        "Jimmy J Leong",
+        "Coppola"
+      ],
+      "tappers": [
+        "Rob",
+        "Nick M",
+        "Woody",
+        "TayTay",
+        "TJ",
+        "Dan",
+        "Marian",
+        "Alec",
+        "Daph",
+        "Joyce"
+      ]
+    }
+  ],
+  "players": {
+    "Rob": {
+      "roles": "TGDTGGTTGT",
+      "tap_rounds": [
+        1,
+        4,
+        7,
+        8,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.2
+    },
+    "Nick M": {
+      "roles": "TGTGTGGTDT",
+      "tap_rounds": [
+        1,
+        3,
+        5,
+        8,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.15
+    },
+    "Brian": {
+      "roles": "DGTTTGGTTG",
+      "tap_rounds": [
+        3,
+        4,
+        5,
+        8,
+        9
+      ],
+      "longest_wait": 2,
+      "late_value": 2.95
+    },
+    "Ryan P": {
+      "roles": "GTGTGDTTTG",
+      "tap_rounds": [
+        2,
+        4,
+        7,
+        8,
+        9
+      ],
+      "longest_wait": 2,
+      "late_value": 3.0
+    },
+    "Woody": {
+      "roles": "GTTGGTGTDT",
+      "tap_rounds": [
+        2,
+        3,
+        6,
+        8,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.15
+    },
+    "Wyatt": {
+      "roles": "TGDTTTTGGG",
+      "tap_rounds": [
+        1,
+        4,
+        5,
+        6,
+        7
+      ],
+      "longest_wait": 2,
+      "late_value": 2.55
+    },
+    "Mario": {
+      "roles": "GGGDTTTTTG",
+      "tap_rounds": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "longest_wait": 0,
+      "late_value": 3.0
+    },
+    "Tyler": {
+      "roles": "TTGGTGDTTG",
+      "tap_rounds": [
+        1,
+        2,
+        5,
+        8,
+        9
+      ],
+      "longest_wait": 2,
+      "late_value": 2.95
+    },
+    "John Ryan": {
+      "roles": "TTTGDTGGTG",
+      "tap_rounds": [
+        1,
+        2,
+        3,
+        6,
+        9
+      ],
+      "longest_wait": 2,
+      "late_value": 2.8
+    },
+    "Jimmy J Leong": {
+      "roles": "TDTGGTTTGG",
+      "tap_rounds": [
+        1,
+        3,
+        6,
+        7,
+        8
+      ],
+      "longest_wait": 2,
+      "late_value": 2.7
+    },
+    "TayTay": {
+      "roles": "GTGDTTGGTT",
+      "tap_rounds": [
+        2,
+        5,
+        6,
+        9,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.3
+    },
+    "Sam B": {
+      "roles": "GTTGTGTGTD",
+      "tap_rounds": [
+        2,
+        3,
+        5,
+        7,
+        9
+      ],
+      "longest_wait": 1,
+      "late_value": 2.85
+    },
+    "TJ": {
+      "roles": "GGTTGTGDTT",
+      "tap_rounds": [
+        3,
+        4,
+        6,
+        9,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.3
+    },
+    "Dan": {
+      "roles": "GGTGTTTDGT",
+      "tap_rounds": [
+        3,
+        5,
+        6,
+        7,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.05
+    },
+    "Marian": {
+      "roles": "TTGGTDTGGT",
+      "tap_rounds": [
+        1,
+        2,
+        5,
+        7,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.05
+    },
+    "Alec": {
+      "roles": "DTGTTGGTGT",
+      "tap_rounds": [
+        2,
+        4,
+        5,
+        8,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.15
+    },
+    "Daph": {
+      "roles": "TGGTGTDGTT",
+      "tap_rounds": [
+        1,
+        4,
+        6,
+        9,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.3
+    },
+    "Keith": {
+      "roles": "TTGTGTGTGD",
+      "tap_rounds": [
+        1,
+        2,
+        4,
+        6,
+        8
+      ],
+      "longest_wait": 1,
+      "late_value": 2.65
+    },
+    "Joyce": {
+      "roles": "GTTTDGTGGT",
+      "tap_rounds": [
+        2,
+        3,
+        4,
+        7,
+        10
+      ],
+      "longest_wait": 2,
+      "late_value": 3.05
+    },
+    "Coppola": {
+      "roles": "TDTTGGTGTG",
+      "tap_rounds": [
+        1,
+        3,
+        4,
+        7,
+        9
+      ],
+      "longest_wait": 2,
+      "late_value": 2.85
+    }
+  },
+  "roles_key": "D = drafter, G = gambler, T = tapper, one letter per round"
+}
