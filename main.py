@@ -19,14 +19,21 @@
 # on the objective; when the search reaches it, the schedule is provably optimal.
 #
 # With 20 players and 10 rounds: the naive bound (every pair together 2 or 3 times) is 1110, but the round
-# overlap bound is 1150, so the "all 2s and 3s" schedule does not exist. The search reaches 1150 with every
-# pair tapping together 1-3 times (20 pairs once, 80 twice, 90 three times). The sum of squares has many tied
-# optima, so a tiebreak term picks one with no pair at 0 and none above 3; since some pair must fall outside
-# {2, 3}, a range of 1-3 is as tight as possible.
+# overlap bound is 1150, so the "all 2s and 3s" schedule does not exist. With LATE_WEIGHT = 0 the search
+# reaches 1150 with every pair tapping together 1-3 times (20 pairs once, 80 twice, 90 three times). The sum of
+# squares has many tied optima, so a tiebreak term picks one with no pair at 0 and none above 3; since some
+# pair must fall outside {2, 3}, a range of 1-3 is as tight as possible.
+#
+# Late-round balance at the 1150 optimum: every two rounds must then share 4 or 5 tappers, and a small integer
+# program over which of rounds 7-10 each player taps shows the late imbalance is at least 476, with values
+# spread at least 2.55-3.30. The default LATE_WEIGHT accepts 1152 to get imbalance 356 within 2.55-3.30.
 #
 # Wait times: nobody sits out more than MAX_WAIT = 2 rounds between two rounds they tap, and shorter waits are
 # preferred as a soft tiebreak. exact_model.py (CP-SAT) proves that a limit of 2 still allows the 1150 optimum,
 # while a limit of 1 cannot do better than 1450.
+#
+# Late rounds: ROUND_VALUES makes later rounds worth more, and each player's total value of rounds tapped is
+# balanced too. This trades off slightly against co-occurrence; see LATE_WEIGHT.
 #
 # Secondary objective: once tapping is fixed, choose drafters (each player drafts exactly once, in a round
 # they are not tapping) to balance how often pairs of players gamble in the same round.
@@ -115,19 +122,47 @@ def waits(row: List[int]) -> List[int]:
     return [b - a - 1 for a, b in zip(rounds, rounds[1:])]
 
 
-def wait_cost(row: List[int]) -> int:
-    return sum(5000 * (g - MAX_WAIT) if g > MAX_WAIT else SHORT_WAIT_COST * max(0, g - 1) ** 2
+# How much tapping in each round is worth; late rounds are more fun to play. Every player taps the same number
+# of rounds, so only the extra value of late rounds matters, and we balance each player's total.
+ROUND_VALUES = [0.5] * (NUM_ROUNDS - 4) + [0.55, 0.65, 0.8, 1.0]
+MEAN_LATE_VALUE = sum(ROUND_VALUES) * ROLE_SIZES[Role.TAPPER] / NUM_PLAYERS
+# Late value is measured in units of 0.05 (the smallest step between round values) for the cost below.
+LATE_UNIT = 0.05
+# Cost per player of (late value - mean)^2, in units of LATE_UNIT. Late balance competes with co-occurrence:
+# perfect late balance would need half the players to tap rounds 7, 8 and 9 together, and at the proven
+# co-occurrence optimum (1150) the late imbalance is at least 476 (in LATE_UNIT^2). With weight 2 the search
+# gives up a single step of co-occurrence (1152, two pairs together 4 times) and gets late values within
+# 2.55-3.30 around a mean of 3.0, with imbalance 356. Set to 0 to ignore late rounds.
+LATE_WEIGHT = 2
+# Late values further than this below or above the mean are penalized heavily (default window 2.55-3.30).
+LATE_TOLERANCE_BELOW = 0.45
+LATE_TOLERANCE_ABOVE = 0.30
+
+
+def late_value(row: List[int]) -> float:
+    return sum(v for v, t in zip(ROUND_VALUES, row) if t)
+
+
+def player_cost(row: List[int]) -> float:
+    """Per-player annealing cost: wait times plus late-round balance."""
+    cost = sum(5000 * (g - MAX_WAIT) if g > MAX_WAIT else SHORT_WAIT_COST * max(0, g - 1) ** 2
                for g in waits(row))
+    if LATE_WEIGHT:
+        deviation = (late_value(row) - MEAN_LATE_VALUE) / LATE_UNIT
+        cost += LATE_WEIGHT * deviation ** 2
+        below, above = LATE_TOLERANCE_BELOW / LATE_UNIT + 1e-9, LATE_TOLERANCE_ABOVE / LATE_UNIT + 1e-9
+        if not -below <= deviation <= above:
+            cost += 3000
+    return cost
 
 
-def tap_quality(tap: List[List[int]]) -> Tuple[int, int, int, int, int]:
-    """Lexicographic score, lower is better:
-    (max wait over the limit, sum of squares, max pair count, min pair count negated, soft wait cost)."""
+def tap_quality(tap: List[List[int]]) -> Tuple[int, float]:
+    """Score to compare restarts, lower is better: (rounds of wait over the limit, total annealing cost)."""
     counts = pair_counts(tappers_by_round(tap))
-    values = [counts[p][q] for p in range(NUM_PLAYERS) for q in range(p + 1, NUM_PLAYERS)]
     longest = max(max(waits(row)) for row in tap)
-    return (max(0, longest - MAX_WAIT), pair_sum_of_squares(counts), max(values), -min(values),
-            sum(wait_cost(row) for row in tap))
+    total = (sum(tap_weight(counts[p][q]) for p in range(NUM_PLAYERS) for q in range(p + 1, NUM_PLAYERS)) +
+             sum(player_cost(row) for row in tap))
+    return max(0, longest - MAX_WAIT), total
 
 
 def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
@@ -142,8 +177,8 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
     tap = [[1 if (p - int(r * stride)) % P < ROLE_SIZES[Role.TAPPER] else 0 for r in range(R)] for p in range(P)]
     together = [[sum(tap[p][r] * tap[q][r] for r in range(R)) if p != q else 0 for q in range(P)]
                 for p in range(P)]
-    player_wait = [wait_cost(row) for row in tap]
-    cost = sum(tap_weight(together[p][q]) for p in range(P) for q in range(p + 1, P)) + sum(player_wait)
+    player_costs = [player_cost(row) for row in tap]
+    cost = sum(tap_weight(together[p][q]) for p in range(P) for q in range(p + 1, P)) + sum(player_costs)
     best_cost, best_tap = cost, [row[:] for row in tap]
     temperature = 50.0
     for _ in range(iterations):
@@ -154,8 +189,8 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
         # p moves a -> b and q moves b -> a. together[p][q] is unchanged; for every other player x,
         # together[p][x] changes by tap[x][b] - tap[x][a] and together[q][x] by the opposite.
         tap[p][a], tap[p][b], tap[q][a], tap[q][b] = 0, 1, 1, 0
-        wait_p, wait_q = wait_cost(tap[p]), wait_cost(tap[q])
-        delta = wait_p + wait_q - player_wait[p] - player_wait[q]
+        cost_p, cost_q = player_cost(tap[p]), player_cost(tap[q])
+        delta = cost_p + cost_q - player_costs[p] - player_costs[q]
         changes = []
         for x in range(P):
             if x == p or x == q:
@@ -172,7 +207,7 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
                 together[x][p] += d
                 together[q][x] -= d
                 together[x][q] -= d
-            player_wait[p], player_wait[q] = wait_p, wait_q
+            player_costs[p], player_costs[q] = cost_p, cost_q
             cost += delta
             if cost < best_cost:
                 best_cost, best_tap = cost, [row[:] for row in tap]
@@ -297,12 +332,17 @@ def main():
     cost, bound = pair_sum_of_squares(tap_counts), tap_lower_bound()
     print(file=sys.stderr)
     print(f"Tapping together, pair count -> number of pairs: {histogram(tap_counts)}", file=sys.stderr)
-    print(f"  sum of squares {cost}, proven lower bound {bound}: "
-          f"{'OPTIMAL' if cost == bound else 'not proven optimal'}", file=sys.stderr)
+    note = 'OPTIMAL' if cost == bound else ('above optimum, traded for late-round balance' if LATE_WEIGHT
+                                           else 'not proven optimal')
+    print(f"  sum of squares {cost}, proven lower bound {bound}: {note}", file=sys.stderr)
     print(f"Gambling together, pair count -> number of pairs: {histogram(gamble_counts)}", file=sys.stderr)
     all_waits = [g for row in tap for g in waits(row)]
     wait_hist = {g: all_waits.count(g) for g in sorted(set(all_waits))}
     print(f"Rounds sat out between taps -> number of gaps: {wait_hist} (limit {MAX_WAIT})", file=sys.stderr)
+    late = sorted((round(late_value(tap[p]), 2), players[p]) for p in range(NUM_PLAYERS))
+    imbalance = sum(((v - MEAN_LATE_VALUE) / LATE_UNIT) ** 2 for v, _ in late)
+    print(f"Late-round value per player (mean {MEAN_LATE_VALUE:.2f}): {late[0][0]:.2f} to {late[-1][0]:.2f}, "
+          f"imbalance {imbalance:.0f}", file=sys.stderr)
 
 
 if __name__ == '__main__':
