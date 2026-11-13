@@ -24,6 +24,10 @@
 # optima, so a tiebreak term picks one with no pair at 0 and none above 3; since some pair must fall outside
 # {2, 3}, a range of 1-3 is as tight as possible.
 #
+# Wait times: nobody sits out more than MAX_WAIT = 2 rounds between two rounds they tap, and shorter waits are
+# preferred as a soft tiebreak. exact_model.py (CP-SAT) proves that a limit of 2 still allows the 1150 optimum,
+# while a limit of 1 cannot do better than 1450.
+#
 # Secondary objective: once tapping is fixed, choose drafters (each player drafts exactly once, in a round
 # they are not tapping) to balance how often pairs of players gamble in the same round.
 
@@ -97,25 +101,49 @@ def tap_weight(x: int) -> int:
     return 64 * x * x + (2 * x - 2 * MEAN_TOGETHER) ** 4 + (50 if x > MAX_TOGETHER else 0)
 
 
-def tap_quality(tap: List[List[int]]) -> Tuple[int, int, int]:
-    """Lexicographic score, lower is better: (sum of squares, max pair count, min pair count negated)."""
+# Longest allowed wait: rounds a player sits out between two rounds they tap. With the default sizes, 2 is the
+# smallest limit that still allows the optimal co-occurrence (1150, proven with exact_model.py); a limit of 1
+# forces the co-occurrence optimum up to 1450, with some pairs tapping together in all 5 of their rounds.
+MAX_WAIT = 2
+# Soft cost per gap of g rounds: prefer short waits but never at the expense of co-occurrence balance.
+SHORT_WAIT_COST = 20
+
+
+def waits(row: List[int]) -> List[int]:
+    """Rounds sat out between consecutive tapping rounds, for one player's tapping row."""
+    rounds = [r for r, t in enumerate(row) if t]
+    return [b - a - 1 for a, b in zip(rounds, rounds[1:])]
+
+
+def wait_cost(row: List[int]) -> int:
+    return sum(5000 * (g - MAX_WAIT) if g > MAX_WAIT else SHORT_WAIT_COST * max(0, g - 1) ** 2
+               for g in waits(row))
+
+
+def tap_quality(tap: List[List[int]]) -> Tuple[int, int, int, int, int]:
+    """Lexicographic score, lower is better:
+    (max wait over the limit, sum of squares, max pair count, min pair count negated, soft wait cost)."""
     counts = pair_counts(tappers_by_round(tap))
     values = [counts[p][q] for p in range(NUM_PLAYERS) for q in range(p + 1, NUM_PLAYERS)]
-    return pair_sum_of_squares(counts), max(values), -min(values)
+    longest = max(max(waits(row)) for row in tap)
+    return (max(0, longest - MAX_WAIT), pair_sum_of_squares(counts), max(values), -min(values),
+            sum(wait_cost(row) for row in tap))
 
 
 def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
     """Simulated annealing over the players x rounds tapping matrix.
 
     A move takes players p, q and rounds a, b where p taps in a but not b and q taps in b but not a, and swaps
-    them. This keeps both row sums (taps per player) and column sums (tappers per round) fixed.
+    them. This keeps both row sums (taps per player) and column sums (tappers per round) fixed. The cost is
+    tap_weight over pairs plus wait_cost over players.
     """
     P, R = NUM_PLAYERS, NUM_ROUNDS
     stride = P / R
     tap = [[1 if (p - int(r * stride)) % P < ROLE_SIZES[Role.TAPPER] else 0 for r in range(R)] for p in range(P)]
     together = [[sum(tap[p][r] * tap[q][r] for r in range(R)) if p != q else 0 for q in range(P)]
                 for p in range(P)]
-    cost = sum(tap_weight(together[p][q]) for p in range(P) for q in range(p + 1, P))
+    player_wait = [wait_cost(row) for row in tap]
+    cost = sum(tap_weight(together[p][q]) for p in range(P) for q in range(p + 1, P)) + sum(player_wait)
     best_cost, best_tap = cost, [row[:] for row in tap]
     temperature = 50.0
     for _ in range(iterations):
@@ -125,7 +153,9 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
             continue
         # p moves a -> b and q moves b -> a. together[p][q] is unchanged; for every other player x,
         # together[p][x] changes by tap[x][b] - tap[x][a] and together[q][x] by the opposite.
-        delta = 0
+        tap[p][a], tap[p][b], tap[q][a], tap[q][b] = 0, 1, 1, 0
+        wait_p, wait_q = wait_cost(tap[p]), wait_cost(tap[q])
+        delta = wait_p + wait_q - player_wait[p] - player_wait[q]
         changes = []
         for x in range(P):
             if x == p or x == q:
@@ -142,11 +172,13 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
                 together[x][p] += d
                 together[q][x] -= d
                 together[x][q] -= d
-            tap[p][a], tap[p][b], tap[q][a], tap[q][b] = 0, 1, 1, 0
+            player_wait[p], player_wait[q] = wait_p, wait_q
             cost += delta
             if cost < best_cost:
                 best_cost, best_tap = cost, [row[:] for row in tap]
-        temperature = max(1.0, temperature * 0.99998)
+        else:
+            tap[p][a], tap[p][b], tap[q][a], tap[q][b] = 1, 0, 0, 1
+        temperature = max(1.0, temperature * 0.99999)
     return best_tap
 
 
@@ -216,17 +248,9 @@ def optimize_drafters(rng: random.Random, tap: List[List[int]], iterations: int)
     return drafters
 
 
-def build_schedule(seed: int = 0) -> Tuple[Schedule, List[List[int]]]:
+def build_schedule(seed: int = 0, restarts: int = 4) -> Tuple[Schedule, List[List[int]]]:
     rng = random.Random(seed)
-    bound = tap_lower_bound()
-    ideal = (bound, MAX_TOGETHER, -(MAX_TOGETHER - 2))
-    tap = None
-    for _ in range(20):
-        candidate = optimize_tappers(rng, iterations=600000)
-        if tap is None or tap_quality(candidate) < tap_quality(tap):
-            tap = candidate
-        if tap_quality(tap) <= ideal:
-            break
+    tap = min((optimize_tappers(rng, iterations=1000000) for _ in range(restarts)), key=tap_quality)
     drafters = optimize_drafters(rng, tap, iterations=20000)
     schedule = [[Role.TAPPER if tap[p][r] else Role.GAMBLER for r in range(NUM_ROUNDS)]
                 for p in range(NUM_PLAYERS)]
@@ -276,6 +300,9 @@ def main():
     print(f"  sum of squares {cost}, proven lower bound {bound}: "
           f"{'OPTIMAL' if cost == bound else 'not proven optimal'}", file=sys.stderr)
     print(f"Gambling together, pair count -> number of pairs: {histogram(gamble_counts)}", file=sys.stderr)
+    all_waits = [g for row in tap for g in waits(row)]
+    wait_hist = {g: all_waits.count(g) for g in sorted(set(all_waits))}
+    print(f"Rounds sat out between taps -> number of gaps: {wait_hist} (limit {MAX_WAIT})", file=sys.stderr)
 
 
 if __name__ == '__main__':
