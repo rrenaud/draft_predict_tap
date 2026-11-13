@@ -26,7 +26,7 @@
 #
 # Late-round balance at the 1150 optimum: every two rounds must then share 4 or 5 tappers, and a small integer
 # program over which of rounds 7-10 each player taps shows the late imbalance is at least 476, with values
-# spread at least 2.55-3.30. The default LATE_WEIGHT accepts 1152 to get imbalance 356 within 2.55-3.30.
+# spread over a range of at least 0.75 points. The default LATE_WEIGHT accepts 1152 to get imbalance 356 within 2.55-3.30.
 #
 # Wait times: nobody sits out more than MAX_WAIT = 2 rounds between two rounds they tap, and shorter waits are
 # preferred as a soft tiebreak. exact_model.py (CP-SAT) proves that a limit of 2 still allows the 1150 optimum,
