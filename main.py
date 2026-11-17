@@ -82,7 +82,9 @@ def configure(num_players: int = 20, num_cabs: int = 1):
     global NUM_PLAYERS, NUM_ROUNDS, NUM_CABS, ROLE_SIZES, TAPS_PER_PLAYER, DRAFTS_PER_PLAYER, players
     global MEAN_TOGETHER, MAX_TOGETHER, ROUND_VALUES, MEAN_LATE_VALUE, LATE_TOLERANCE_BELOW, LATE_TOLERANCE_ABOVE
     global MAX_WAIT
-    assert num_players % 2 == 0 and num_players >= 20, "need an even number of players, at least 20"
+    assert num_players % 2 == 0 and num_players >= 14, "need an even number of players, at least 14"
+    assert num_cabs == 1 or num_players >= num_cabs * TAPPERS_PER_ROUND, \
+        f"{num_cabs} cabs need at least {num_cabs * TAPPERS_PER_ROUND} players to fill both games"
     NUM_PLAYERS, NUM_ROUNDS, NUM_CABS = num_players, num_players // 2, num_cabs
     ROLE_SIZES = {Role.DRAFTER: DRAFTERS_PER_ROUND, Role.TAPPER: TAPPERS_PER_ROUND,
                   Role.GAMBLER: num_players - DRAFTERS_PER_ROUND - TAPPERS_PER_ROUND}

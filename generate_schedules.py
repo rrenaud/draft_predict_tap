@@ -211,11 +211,12 @@ def write(data: Dict):
           f"(imbalance {m['late_value']['imbalance']}), gamble sumsq {m['gamble_together']['sum_of_squares']}")
 
 
+SMALLER_EVENTS = [14, 16, 18]  # one cab only: two cabs need 20 tappers at once
 LARGER_EVENTS = [22, 24, 26]
 
 
-def larger_event_variant(num_players: int, num_cabs: int, schedule: dpt.Schedule) -> Dict:
-    """Name, description and critique for a larger event, written from the schedule's own numbers."""
+def event_variant(num_players: int, num_cabs: int, schedule: dpt.Schedule) -> Dict:
+    """Name, description and critique for a 14-26 player event, written from the schedule's own numbers."""
     m = metrics(schedule)
     t, w, l = m['tap_together'], m['waits'], m['late_value']
     rounds, gambles = dpt.NUM_ROUNDS, dpt.ROLE_SIZES[dpt.Role.GAMBLER] * dpt.NUM_ROUNDS // num_players
@@ -234,11 +235,15 @@ def larger_event_variant(num_players: int, num_cabs: int, schedule: dpt.Schedule
             'title': f'Balanced, {num_players} players',
             'description': f"One cab, {num_players} players, {rounds} rounds of 2 drafters, "
                            f"{dpt.ROLE_SIZES[dpt.Role.GAMBLER]} gamblers and 10 tappers. Everyone taps 5 times, "
-                           f"drafts once and gambles {gambles} times.",
-            'critique': score + f"Pairs tap together {t['min']}-{t['max']} times.{never} With more players "
-                        f"everyone sits out more rounds, so the wait limit is 3 rounds instead of 2 "
-                        f"(longest wait here: {w['max']}); a 2-round limit would cost noticeably more "
-                        f"co-occurrence balance." + late,
+                           f"drafts once and gambles {'once' if gambles == 1 else f'{gambles} times'}.",
+            'critique': score + f"Pairs tap together {t['min']}-{t['max']} times.{never} " + (
+                f"With more players everyone sits out more rounds, so the wait limit is 3 rounds instead of 2 "
+                f"(longest wait here: {w['max']}); a 2-round limit would cost noticeably more co-occurrence "
+                f"balance." if num_players > 20 else
+                f"With fewer players everyone taps 5 of only {rounds} rounds, so the same people play together "
+                f"much more often (about {dpt.MEAN_TOGETHER:.1f} games per pair on average, against 2.4 with 20 "
+                f"players) and waits are short (longest: {w['max']}). Only {dpt.ROLE_SIZES[dpt.Role.GAMBLER]} "
+                f"people gamble each round, and two cabs aren't possible: they need 20 tappers at once.") + late,
         }
     else:
         solo = " The final round is played alone on one cab." if rounds % 2 else ""
@@ -248,7 +253,7 @@ def larger_event_variant(num_players: int, num_cabs: int, schedule: dpt.Schedule
             'description': f"Two cabs, {num_players} players, {rounds} rounds played in parallel pairs with "
                            f"disjoint tappers.{solo} Each round's drafters and gamblers are everyone not "
                            f"tapping it, and nobody drafts both games of a slot. Everyone taps 5 times, drafts "
-                           f"once and gambles {gambles} times.",
+                           f"once and gambles {'once' if gambles == 1 else f'{gambles} times'}.",
             'critique': score + f"Pairs tap together {t['min']}-{t['max']} times.{never} With more than 20 "
                         f"players, {num_players - 20} people sit out tapping in each parallel slot and gamble "
                         f"on both games, so waits come back (longest: {w['max']} slot"
@@ -262,12 +267,12 @@ def larger_event_variant(num_players: int, num_cabs: int, schedule: dpt.Schedule
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     seed = 0
-    for num_players in LARGER_EVENTS:
-        for num_cabs in (1, 2):
-            apply_settings({'NUM_PLAYERS': num_players, 'NUM_CABS': num_cabs})
-            schedule, _ = dpt.build_schedule(seed)
-            dpt.check_schedule(schedule)
-            write(to_json(larger_event_variant(num_players, num_cabs, schedule), schedule, seed))
+    events = [(p, 1) for p in SMALLER_EVENTS] + [(p, c) for p in LARGER_EVENTS for c in (1, 2)]
+    for num_players, num_cabs in events:
+        apply_settings({'NUM_PLAYERS': num_players, 'NUM_CABS': num_cabs})
+        schedule, _ = dpt.build_schedule(seed)
+        dpt.check_schedule(schedule)
+        write(to_json(event_variant(num_players, num_cabs, schedule), schedule, seed))
     for variant in VARIANTS:
         apply_settings(variant['settings'])
         if variant.get('exact'):

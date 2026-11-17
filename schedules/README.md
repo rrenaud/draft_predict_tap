@@ -26,22 +26,30 @@ What the columns mean:
   A player's late value is the total over the rounds they tap. **Late imbalance** is the sum over players of
   (value − 3.0)², in units of 0.05.
 
-## Larger events (22, 24 and 26 players)
+## Other event sizes (14 to 26 players)
 
-There are players / 2 rounds (11, 12 or 13), each with 2 drafters, 10 tappers per cab and everyone else
-gambling, so every player still taps exactly 5 times and drafts once; extra players gamble more (5, 6 or 7
-times). With two cabs, rounds are paired into time slots with disjoint tappers, and with an odd number of
+There are players / 2 rounds (7 to 13), each with 2 drafters, 10 tappers per cab and everyone else gambling,
+so every player still taps exactly 5 times and drafts once, and gambles (players − 12) / 2 times (1 to 7).
+Below 20 players only one cab is possible, since two cabs need 20 tappers at once. With two cabs, rounds are paired into time slots with disjoint tappers, and with an odd number of
 rounds the final round is played alone on one cab. Players 21 to 26 are placeholder names. Each file's
 `description` and `critique` are written from its own numbers.
 
 | Schedule | Players | Cabs | Rounds | Co-occurrence / proven lower bound | Times a pair taps together | Longest wait | Late value range |
 |---|---|---|---|---|---|---|---|
+| [balanced-14](balanced-14.json) | 14 | 1 | 7 | 1113 / 1113 (optimal) | 3–4 | 2 | 2.95–3.50 (mean 3.21) |
+| [balanced-16](balanced-16.json) | 16 | 1 | 8 | 1120 / 1120 (optimal) | 2–4 | 2 | 2.55–3.35 (mean 3.12) |
+| [balanced-18](balanced-18.json) | 18 | 1 | 9 | 1125 / 1125 (optimal) | 1–4 | 2 | 2.55–3.50 (mean 3.06) |
 | [balanced-22](balanced-22.json) | 22 | 1 | 11 | 1159 / 1155 | 1–3 | 3 | 2.50–3.45 (mean 2.95) |
 | [two-cabs-22](two-cabs-22.json) | 22 | 2 | 11 | 1255 / 1255 (optimal) | 0–4 | 1 | 2.75–3.25 (mean 2.95) |
 | [balanced-24](balanced-24.json) | 24 | 1 | 12 | 1188 / 1188 (optimal) | 1–3 | 3 | 2.50–3.35 (mean 2.92) |
 | [two-cabs-24](two-cabs-24.json) | 24 | 2 | 12 | 1260 / 1260 (optimal) | 0–4 | 1 | 2.60–3.00 (mean 2.92) |
 | [balanced-26](balanced-26.json) | 26 | 1 | 13 | 1209 / 1209 (optimal) | 0–3 | 3 | 2.50–3.45 (mean 2.88) |
 | [two-cabs-26](two-cabs-26.json) | 26 | 2 | 13 | 1281 / 1281 (optimal) | 0–3 | 2 | 2.52–3.25 (mean 2.88) |
+
+What changes with fewer players: everyone taps 5 of only 7–9 rounds, so the same people play together much
+more often (3.5 games per pair on average at 14 players, against 2.4 at 20), waits stay at 2 or less, and only
+2–6 people gamble each round. All three small sizes meet the proven lower bound exactly; at 14 players every
+pair taps together 3 or 4 times.
 
 What changes with more players:
 
