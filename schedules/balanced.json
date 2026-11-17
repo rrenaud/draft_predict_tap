@@ -10,6 +10,7 @@
     "LATE_TOLERANCE_ABOVE": 0.3
   },
   "seed": 0,
+  "cabs": 1,
   "metrics": {
     "tap_together": {
       "sum_of_squares": 1154,
@@ -62,6 +63,8 @@
   "rounds": [
     {
       "round": 1,
+      "time_slot": 1,
+      "cab": 1,
       "drafters": [
         "Brian",
         "Alec"
@@ -91,6 +94,8 @@
     },
     {
       "round": 2,
+      "time_slot": 2,
+      "cab": 1,
       "drafters": [
         "Jimmy J Leong",
         "Coppola"
@@ -120,6 +125,8 @@
     },
     {
       "round": 3,
+      "time_slot": 3,
+      "cab": 1,
       "drafters": [
         "Rob",
         "Wyatt"
@@ -149,6 +156,8 @@
     },
     {
       "round": 4,
+      "time_slot": 4,
+      "cab": 1,
       "drafters": [
         "Mario",
         "TayTay"
@@ -178,6 +187,8 @@
     },
     {
       "round": 5,
+      "time_slot": 5,
+      "cab": 1,
       "drafters": [
         "John Ryan",
         "Joyce"
@@ -207,6 +218,8 @@
     },
     {
       "round": 6,
+      "time_slot": 6,
+      "cab": 1,
       "drafters": [
         "Ryan P",
         "Marian"
@@ -236,6 +249,8 @@
     },
     {
       "round": 7,
+      "time_slot": 7,
+      "cab": 1,
       "drafters": [
         "Tyler",
         "Daph"
@@ -265,6 +280,8 @@
     },
     {
       "round": 8,
+      "time_slot": 8,
+      "cab": 1,
       "drafters": [
         "TJ",
         "Dan"
@@ -294,6 +311,8 @@
     },
     {
       "round": 9,
+      "time_slot": 9,
+      "cab": 1,
       "drafters": [
         "Nick M",
         "Woody"
@@ -323,6 +342,8 @@
     },
     {
       "round": 10,
+      "time_slot": 10,
+      "cab": 1,
       "drafters": [
         "Sam B",
         "Keith"

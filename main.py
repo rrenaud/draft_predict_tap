@@ -35,9 +35,18 @@
 # Late rounds: ROUND_VALUES makes later rounds worth more, and each player's total value of rounds tapped is
 # balanced too. This trades off slightly against co-occurrence; see LATE_WEIGHT.
 #
+# PARALLEL NOTES (NUM_CABS = 2). Each player's tapping is a choice of cab in each of the 5 slots. Tappers of the
+# two rounds in a slot are disjoint, so those round pairs overlap 0 and the trace bound rises to 1250. It is
+# met exactly when every slot splits the players 10/10 and every two slots are "orthogonal" (each combination
+# of cabs holds exactly 5 players), as in 5 columns of a Hadamard matrix of order 20. Some pairs must be
+# extreme: the 32 possible cab patterns form 16 complementary pairs, so with 20 players some two players have
+# identical patterns (together every slot) or complementary ones (never together). At 1250 the fewest such
+# pairs is 5 (proven with CP-SAT); the search finds that: 4 pairs never together, 1 pair always, the rest 1-4.
+#
 # Secondary objective: once tapping is fixed, choose drafters (each player drafts exactly once, in a round
 # they are not tapping) to balance how often pairs of players gamble in the same round.
 
+import argparse
 import math
 import random
 import sys
@@ -54,6 +63,11 @@ class Role(IntEnum):
 ROLE_SIZES = {Role.DRAFTER: 2, Role.GAMBLER: 8, Role.TAPPER: 10}
 NUM_PLAYERS = sum(ROLE_SIZES.values())
 NUM_ROUNDS = 10
+# Number of cabinets. With 2, rounds are played in pairs at the same time (rounds 1 and 2, then 3 and 4, ...):
+# the two rounds of a time slot have disjoint tappers, and each round's drafters and gamblers come from the
+# other round's tappers (both drafts happen in parallel at the start of the slot). Everyone taps exactly once
+# per slot, so nobody waits between games and everyone plays the final slot.
+NUM_CABS = 1
 
 for _role, _size in ROLE_SIZES.items():
     assert (_size * NUM_ROUNDS) % NUM_PLAYERS == 0, f"{_role.name} slots don't divide evenly among players"
@@ -77,7 +91,9 @@ def even_split_sum_of_squares(total: int, bins: int) -> int:
 def tap_lower_bound() -> int:
     P, R, T, k = NUM_PLAYERS, NUM_ROUNDS, ROLE_SIZES[Role.TAPPER], TAPS_PER_PLAYER
     pair_bound = even_split_sum_of_squares(R * math.comb(T, 2), math.comb(P, 2))
-    round_bound = (R * T * T - P * k * k) // 2 + even_split_sum_of_squares(P * math.comb(k, 2), math.comb(R, 2))
+    # Rounds in the same time slot share no tappers, so their overlap is 0 and the rest must absorb the total.
+    overlapping_pairs = math.comb(R, 2) - (R // NUM_CABS) * math.comb(NUM_CABS, 2)
+    round_bound = (R * T * T - P * k * k) // 2 + even_split_sum_of_squares(P * math.comb(k, 2), overlapping_pairs)
     return max(pair_bound, round_bound)
 
 
@@ -104,7 +120,12 @@ def tap_weight(x: int) -> int:
 
     Dominated by x^2 (the provable objective). Among the many schedules tied on sum of squares, the quartic
     term prefers counts near the mean (no 0s), and the last term prefers never exceeding ceil(mean).
+
+    With parallel cabs, the optimum forces a few pairs to extremes (see PARALLEL NOTES below), so x^2 gets a
+    much larger weight to keep it strictly primary and only the quartic tiebreak remains.
     """
+    if NUM_CABS > 1:
+        return 1000 * x * x + (2 * x - 2 * MEAN_TOGETHER) ** 4
     return 64 * x * x + (2 * x - 2 * MEAN_TOGETHER) ** 4 + (50 if x > MAX_TOGETHER else 0)
 
 
@@ -116,10 +137,14 @@ MAX_WAIT = 2
 SHORT_WAIT_COST = 20
 
 
+def time_slot(round_id: int) -> int:
+    return round_id // NUM_CABS
+
+
 def waits(row: List[int]) -> List[int]:
-    """Rounds sat out between consecutive tapping rounds, for one player's tapping row."""
-    rounds = [r for r, t in enumerate(row) if t]
-    return [b - a - 1 for a, b in zip(rounds, rounds[1:])]
+    """Time slots sat out between consecutive tapping rounds, for one player's tapping row."""
+    slots = [time_slot(r) for r, t in enumerate(row) if t]
+    return [b - a - 1 for a, b in zip(slots, slots[1:])]
 
 
 # How much tapping in each round is worth; late rounds are more fun to play. Every player taps the same number
@@ -139,8 +164,15 @@ LATE_TOLERANCE_BELOW = 0.45
 LATE_TOLERANCE_ABOVE = 0.30
 
 
+def round_value(round_id: int) -> float:
+    """Value of tapping a round. Rounds played at the same time are worth the same: the average of their values."""
+    slot = time_slot(round_id)
+    same_time = ROUND_VALUES[slot * NUM_CABS:(slot + 1) * NUM_CABS]
+    return sum(same_time) / len(same_time)
+
+
 def late_value(row: List[int]) -> float:
-    return sum(v for v, t in zip(ROUND_VALUES, row) if t)
+    return sum(round_value(r) for r, t in enumerate(row) if t)
 
 
 def player_cost(row: List[int]) -> float:
@@ -173,8 +205,18 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
     tap_weight over pairs plus wait_cost over players.
     """
     P, R = NUM_PLAYERS, NUM_ROUNDS
-    stride = P / R
-    tap = [[1 if (p - int(r * stride)) % P < ROLE_SIZES[Role.TAPPER] else 0 for r in range(R)] for p in range(P)]
+    if NUM_CABS == 1:
+        stride = P / R
+        tap = [[1 if (p - int(r * stride)) % P < ROLE_SIZES[Role.TAPPER] else 0 for r in range(R)]
+               for p in range(P)]
+    else:
+        # Every player taps exactly one round of each time slot.
+        assert NUM_CABS * ROLE_SIZES[Role.TAPPER] == P, "parallel rounds must split the players exactly"
+        tap = [[0] * R for _ in range(P)]
+        for slot in range(R // NUM_CABS):
+            order = rng.sample(range(P), P)
+            for i, p in enumerate(order):
+                tap[p][slot * NUM_CABS + i // ROLE_SIZES[Role.TAPPER]] = 1
     together = [[sum(tap[p][r] * tap[q][r] for r in range(R)) if p != q else 0 for q in range(P)]
                 for p in range(P)]
     player_costs = [player_cost(row) for row in tap]
@@ -183,7 +225,11 @@ def optimize_tappers(rng: random.Random, iterations: int) -> List[List[int]]:
     temperature = 50.0
     for _ in range(iterations):
         p, q = rng.sample(range(P), 2)
-        a, b = rng.sample(range(R), 2)
+        if NUM_CABS == 1:
+            a, b = rng.sample(range(R), 2)
+        else:  # only trade between rounds played at the same time, keeping their tappers disjoint
+            slot = rng.randrange(R // NUM_CABS)
+            a, b = rng.sample(range(slot * NUM_CABS, (slot + 1) * NUM_CABS), 2)
         if not (tap[p][a] and not tap[p][b] and not tap[q][a] and tap[q][b]):
             continue
         # p moves a -> b and q moves b -> a. together[p][q] is unchanged; for every other player x,
@@ -308,6 +354,10 @@ def histogram(counts: List[List[int]]) -> Dict[int, int]:
 
 
 def check_schedule(schedule: Schedule):
+    for p in range(NUM_PLAYERS):
+        for slot in range(NUM_ROUNDS // NUM_CABS):
+            same_time = range(slot * NUM_CABS, (slot + 1) * NUM_CABS)
+            assert sum(schedule[p][r] == Role.TAPPER for r in same_time) <= 1, "taps two rounds at once"
     for r in range(NUM_ROUNDS):
         for role in Role:
             assert sum(schedule[p][r] == role for p in range(NUM_PLAYERS)) == ROLE_SIZES[role]
@@ -318,8 +368,16 @@ def check_schedule(schedule: Schedule):
 
 
 def main():
-    seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0
-    schedule, tap = build_schedule(seed)
+    global NUM_CABS, LATE_WEIGHT
+    parser = argparse.ArgumentParser(description="Print a round-by-round role sheet as CSV.")
+    parser.add_argument('seed', nargs='?', type=int, default=0)
+    parser.add_argument('--cabs', type=int, default=NUM_CABS, choices=[1, 2],
+                        help="2 plays rounds in parallel pairs (1+2, 3+4, ...) with disjoint tappers")
+    args = parser.parse_args()
+    NUM_CABS = args.cabs
+    if NUM_CABS > 1:
+        LATE_WEIGHT = 0  # everyone taps once per time slot, so late rounds are shared equally already
+    schedule, tap = build_schedule(args.seed)
     check_schedule(schedule)
 
     for round_id in range(NUM_ROUNDS):
@@ -338,7 +396,7 @@ def main():
     print(f"Gambling together, pair count -> number of pairs: {histogram(gamble_counts)}", file=sys.stderr)
     all_waits = [g for row in tap for g in waits(row)]
     wait_hist = {g: all_waits.count(g) for g in sorted(set(all_waits))}
-    print(f"Rounds sat out between taps -> number of gaps: {wait_hist} (limit {MAX_WAIT})", file=sys.stderr)
+    print(f"Time slots sat out between taps -> number of gaps: {wait_hist} (limit {MAX_WAIT})", file=sys.stderr)
     late = sorted((round(late_value(tap[p]), 2), players[p]) for p in range(NUM_PLAYERS))
     imbalance = sum(((v - MEAN_LATE_VALUE) / LATE_UNIT) ** 2 for v, _ in late)
     print(f"Late-round value per player (mean {MEAN_LATE_VALUE:.2f}): {late[0][0]:.2f} to {late[-1][0]:.2f}, "

@@ -49,6 +49,20 @@ VARIANTS = [
                     "main event.",
     },
     {
+        'name': 'two-cabs',
+        'title': 'Two cabs in parallel',
+        'settings': {'NUM_CABS': 2, 'LATE_WEIGHT': 0},
+        'description': "Two cabinets. Rounds run in simultaneous pairs (1+2, 3+4, ... 9+10) whose tappers are "
+                       "disjoint, so every player taps exactly once per time slot. Each round's drafters and "
+                       "gamblers are the other round's tappers, drafting and predicting in parallel at the start "
+                       "of the slot. The event takes half as long.",
+        'critique': "No waiting at all and perfectly even late-round value, by construction. Mixing is coarser: "
+                    "every slot splits the room into two fixed halves, which raises the co-occurrence floor to "
+                    "1250 (met exactly). By pigeonhole some pairs must be extreme, and the minimum is reached: 4 "
+                    "pairs never tap together and 1 pair taps together in all 5 slots. Gambling is also less "
+                    "even, since you only ever gamble on the other half of the room.",
+    },
+    {
         'name': 'short-waits',
         'title': 'Short waits (max 1 round)',
         'settings': {'MAX_WAIT': 1, 'LATE_WEIGHT': 0},
@@ -75,7 +89,8 @@ BASELINE = {
 
 
 def apply_settings(settings: Dict):
-    defaults = {'MAX_WAIT': 2, 'LATE_WEIGHT': 2, 'LATE_TOLERANCE_BELOW': 0.45, 'LATE_TOLERANCE_ABOVE': 0.30}
+    defaults = {'NUM_CABS': 1, 'MAX_WAIT': 2, 'LATE_WEIGHT': 2, 'LATE_TOLERANCE_BELOW': 0.45,
+                'LATE_TOLERANCE_ABOVE': 0.30}
     for key, value in {**defaults, **settings}.items():
         setattr(dpt, key, value)
 
@@ -120,6 +135,8 @@ def to_json(variant: Dict, schedule: dpt.Schedule, seed) -> Dict:
     names = dpt.players
     rounds = [{
         'round': r + 1,
+        'time_slot': dpt.time_slot(r) + 1,
+        'cab': r % dpt.NUM_CABS + 1,
         'drafters': [names[p] for p in range(P) if schedule[p][r] == dpt.Role.DRAFTER],
         'gamblers': [names[p] for p in range(P) if schedule[p][r] == dpt.Role.GAMBLER],
         'tappers': [names[p] for p in range(P) if schedule[p][r] == dpt.Role.TAPPER],
@@ -140,6 +157,7 @@ def to_json(variant: Dict, schedule: dpt.Schedule, seed) -> Dict:
         'critique': variant['critique'],
         'settings': variant.get('settings', {}),
         'seed': seed,
+        'cabs': dpt.NUM_CABS,
         'metrics': metrics(schedule),
         'rounds': rounds,
         'players': by_player,
