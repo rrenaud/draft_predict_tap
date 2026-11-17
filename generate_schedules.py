@@ -51,15 +51,15 @@ VARIANTS = [
     {
         'name': 'two-cabs',
         'title': 'Two cabs in parallel',
-        'settings': {'NUM_CABS': 2, 'LATE_WEIGHT': 0},
+        'settings': {'NUM_CABS': 2},
         'description': "Two cabinets. Rounds run in simultaneous pairs (1+2, 3+4, ... 9+10) whose tappers are "
                        "disjoint, so every player taps exactly once per time slot. Each round's drafters and "
                        "gamblers are the other round's tappers, drafting and predicting in parallel at the start "
                        "of the slot. The event takes half as long.",
         'critique': "No waiting at all and perfectly even late-round value, by construction. Mixing is coarser: "
                     "every slot splits the room into two fixed halves, which raises the co-occurrence floor to "
-                    "1250 (met exactly). By pigeonhole some pairs must be extreme, and the minimum is reached: 4 "
-                    "pairs never tap together and 1 pair taps together in all 5 slots. Gambling is also less "
+                    "1250 (met exactly). By pigeonhole some pairs must be extreme, and the minimum is reached: 5 "
+                    "pairs never tap together; every other pair taps together 1-4 times. Gambling is also less "
                     "even, since you only ever gamble on the other half of the room.",
     },
     {
@@ -89,9 +89,11 @@ BASELINE = {
 
 
 def apply_settings(settings: Dict):
-    defaults = {'NUM_CABS': 1, 'MAX_WAIT': 2, 'LATE_WEIGHT': 2, 'LATE_TOLERANCE_BELOW': 0.45,
-                'LATE_TOLERANCE_ABOVE': 0.30}
-    for key, value in {**defaults, **settings}.items():
+    """Configure the event size first, then override individual knobs the variant names."""
+    settings = dict(settings)
+    dpt.configure(settings.pop('NUM_PLAYERS', 20), settings.pop('NUM_CABS', 1))
+    dpt.LATE_WEIGHT = 2
+    for key, value in settings.items():
         setattr(dpt, key, value)
 
 
@@ -209,9 +211,63 @@ def write(data: Dict):
           f"(imbalance {m['late_value']['imbalance']}), gamble sumsq {m['gamble_together']['sum_of_squares']}")
 
 
+LARGER_EVENTS = [22, 24, 26]
+
+
+def larger_event_variant(num_players: int, num_cabs: int, schedule: dpt.Schedule) -> Dict:
+    """Name, description and critique for a larger event, written from the schedule's own numbers."""
+    m = metrics(schedule)
+    t, w, l = m['tap_together'], m['waits'], m['late_value']
+    rounds, gambles = dpt.NUM_ROUNDS, dpt.ROLE_SIZES[dpt.Role.GAMBLER] * dpt.NUM_ROUNDS // num_players
+    optimal = t['sum_of_squares'] == t['proven_lower_bound']
+    score = (f"Co-occurrence is {t['sum_of_squares']}, "
+             + ("exactly the proven lower bound, so no schedule mixes players more evenly. " if optimal else
+                f"{t['sum_of_squares'] - t['proven_lower_bound']} above the proven lower bound of "
+                f"{t['proven_lower_bound']}. "))
+    extremes = t['pairs_by_count'].get('0', 0)
+    never = f" {extremes} pairs never tap together." if extremes else ""
+    late = (f" Late-round value ranges {l['min']:.2f}-{l['max']:.2f} around a mean of {l['mean']:.2f} "
+            f"(imbalance {l['imbalance']}).")
+    if num_cabs == 1:
+        variant = {
+            'name': f'balanced-{num_players}',
+            'title': f'Balanced, {num_players} players',
+            'description': f"One cab, {num_players} players, {rounds} rounds of 2 drafters, "
+                           f"{dpt.ROLE_SIZES[dpt.Role.GAMBLER]} gamblers and 10 tappers. Everyone taps 5 times, "
+                           f"drafts once and gambles {gambles} times.",
+            'critique': score + f"Pairs tap together {t['min']}-{t['max']} times.{never} With more players "
+                        f"everyone sits out more rounds, so the wait limit is 3 rounds instead of 2 "
+                        f"(longest wait here: {w['max']}); a 2-round limit would cost noticeably more "
+                        f"co-occurrence balance." + late,
+        }
+    else:
+        solo = " The final round is played alone on one cab." if rounds % 2 else ""
+        variant = {
+            'name': f'two-cabs-{num_players}',
+            'title': f'Two cabs, {num_players} players',
+            'description': f"Two cabs, {num_players} players, {rounds} rounds played in parallel pairs with "
+                           f"disjoint tappers.{solo} Each round's drafters and gamblers are everyone not "
+                           f"tapping it, and nobody drafts both games of a slot. Everyone taps 5 times, drafts "
+                           f"once and gambles {gambles} times.",
+            'critique': score + f"Pairs tap together {t['min']}-{t['max']} times.{never} With more than 20 "
+                        f"players, {num_players - 20} people sit out tapping in each parallel slot and gamble "
+                        f"on both games, so waits come back (longest: {w['max']} slot"
+                        f"{'s' if w['max'] != 1 else ''}) and late rounds are no longer shared automatically."
+                        + late,
+        }
+    variant['settings'] = {'NUM_PLAYERS': num_players, 'NUM_CABS': num_cabs}
+    return variant
+
+
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     seed = 0
+    for num_players in LARGER_EVENTS:
+        for num_cabs in (1, 2):
+            apply_settings({'NUM_PLAYERS': num_players, 'NUM_CABS': num_cabs})
+            schedule, _ = dpt.build_schedule(seed)
+            dpt.check_schedule(schedule)
+            write(to_json(larger_event_variant(num_players, num_cabs, schedule), schedule, seed))
     for variant in VARIANTS:
         apply_settings(variant['settings'])
         if variant.get('exact'):
