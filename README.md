@@ -18,7 +18,17 @@ The doc for how to play is here: https://docs.google.com/document/d/1shMuAlF4hN6
 - `sheets/` has ready-to-use scoring workbooks, one per schedule (14-26 players, one or two cabs): participant
   list, draft sheets with dropdowns of the Players still available, scores, final ranking and draft order. They
   work the same in Google Sheets (upload to Drive and open with Google Sheets), LibreOffice and Excel.
-  `make_scoresheet.py` builds them from `schedules/` using only functions all three apps share, and
-  `test_scoresheet.py` plays a simulated draft and scoring through LibreOffice to check them.
+  `make_scoresheet.py` builds them from `schedules/` using only functions all three apps share.
+
+## Tests
+
+`python3 -m unittest discover tests` checks the generated workbooks (also run on every push by GitHub Actions):
+
+- every formula uses only functions that Google Sheets, LibreOffice and Excel share;
+- each round's Planners, Players and Predictors match the schedule;
+- the committed `sheets/` files match what `make_scoresheet.py` builds now (rerun it after changes);
+- with LibreOffice installed: every workbook recalculates without errors, and a simulated game in each one
+  checks the draft dropdowns after every pick, the draft sheets' error messages, team lists, winners, totals,
+  the Final Ranking and the role grid under both Predictor scoring modes.
 - `generate_schedules.py` writes alternative schedules with different trade-offs to `schedules/`; see
   [schedules/README.md](schedules/README.md) for the comparison and critiques.
