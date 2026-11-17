@@ -15,8 +15,10 @@ The doc for how to play is here: https://docs.google.com/document/d/1shMuAlF4hN6
   number from 14) schedules a different-size event with players / 2 rounds, so everyone still taps 5 times and drafts once.
 - `exact_model.py` is an exact CP-SAT model (`pip install ortools`) used to prove what is achievable under a
   given wait limit.
-- `sheets/` has copies of the scoring spreadsheet template with the optimized schedules filled in, one per
-  event size and cab count (14-22 players; the template holds at most 22). Upload one to Google Drive and open
-  it with Google Sheets. `make_sheets.py template.xlsx` regenerates them from the template exported as .xlsx.
+- `sheets/` has ready-to-use scoring workbooks, one per schedule (14-26 players, one or two cabs): participant
+  list, draft sheets with dropdowns of the Players still available, scores, final ranking and draft order. They
+  work the same in Google Sheets (upload to Drive and open with Google Sheets), LibreOffice and Excel.
+  `make_scoresheet.py` builds them from `schedules/` using only functions all three apps share, and
+  `test_scoresheet.py` plays a simulated draft and scoring through LibreOffice to check them.
 - `generate_schedules.py` writes alternative schedules with different trade-offs to `schedules/`; see
   [schedules/README.md](schedules/README.md) for the comparison and critiques.
